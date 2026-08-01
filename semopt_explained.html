@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>semopt — a field guide</title>
+<style>
+  :root {
+    --paper:   #E8EDF4;
+    --panel:   #FBFCFE;
+    --panel-2: #F1F4F9;
+    --ink:     #18202E;
+    --ink-soft:#4C5A6E;
+    --ink-faint:#8593A6;
+    --line:    #D3DBE7;
+    --accent:  #2E6CA6;   /* instrument blue — "our method" */
+    --accent-d:#1E4E7A;
+    --cheap:   #3C8C6C;   /* cheap tier / good / guarantee met */
+    --mid:     #B07CC9;   /* mid tier */
+    --expensive:#C6793A;  /* expensive tier / cost */
+    --grid:    rgba(46,108,166,0.06);
+    --shadow:  0 1px 2px rgba(24,32,46,0.06), 0 6px 20px rgba(24,32,46,0.06);
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --maxw: 730px;
+    --wide: 1000px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:   #0E131B;
+      --panel:   #161D29;
+      --panel-2: #1C2431;
+      --ink:     #E7EDF6;
+      --ink-soft:#9EABBE;
+      --ink-faint:#66748A;
+      --line:    #28313F;
+      --accent:  #5CA2DA;
+      --accent-d:#8CC1EC;
+      --cheap:   #5FBB96;
+      --mid:     #C79BDC;
+      --expensive:#E1A462;
+      --grid:    rgba(92,162,218,0.07);
+      --shadow:  0 1px 2px rgba(0,0,0,0.4), 0 8px 26px rgba(0,0,0,0.36);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper:#E8EDF4; --panel:#FBFCFE; --panel-2:#F1F4F9; --ink:#18202E;
+    --ink-soft:#4C5A6E; --ink-faint:#8593A6; --line:#D3DBE7; --accent:#2E6CA6;
+    --accent-d:#1E4E7A; --cheap:#3C8C6C; --mid:#B07CC9; --expensive:#C6793A;
+    --grid:rgba(46,108,166,0.06); --shadow:0 1px 2px rgba(24,32,46,0.06),0 6px 20px rgba(24,32,46,0.06);
+  }
+  :root[data-theme="dark"] {
+    --paper:#0E131B; --panel:#161D29; --panel-2:#1C2431; --ink:#E7EDF6;
+    --ink-soft:#9EABBE; --ink-faint:#66748A; --line:#28313F; --accent:#5CA2DA;
+    --accent-d:#8CC1EC; --cheap:#5FBB96; --mid:#C79BDC; --expensive:#E1A462;
+    --grid:rgba(92,162,218,0.07); --shadow:0 1px 2px rgba(0,0,0,0.4),0 8px 26px rgba(0,0,0,0.36);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.66;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- layout ---------- */
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  .wide { max-width: var(--wide); margin: 0 auto; padding: 0 24px; }
+  section { padding: 46px 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: none; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 22px;
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-family: var(--font-mono); font-size: 13px; letter-spacing: .04em; color: var(--ink); }
+  .brand b { color: var(--accent); font-weight: 700; }
+  .brand .dim { color: var(--ink-faint); }
+  .toggle {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .03em;
+    background: var(--panel); color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 11px; cursor: pointer;
+  }
+  .toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- type ---------- */
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+    letter-spacing: .15em; text-transform: uppercase; color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-size: clamp(2.1rem, 6vw, 3.5rem); line-height: 1.04; letter-spacing: -0.025em;
+    font-weight: 800; margin: 0 0 20px; text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(1.5rem, 3.4vw, 2.05rem); line-height: 1.12; letter-spacing: -0.02em;
+    font-weight: 750; margin: 0 0 10px; text-wrap: balance;
+  }
+  h3 { font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
+  p { margin: 0 0 18px; }
+  .lede { font-size: 1.24rem; line-height: 1.5; color: var(--ink-soft); text-wrap: pretty; }
+  .kicker { font-family: var(--font-mono); font-size: 12.5px; letter-spacing:.14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; }
+  a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); text-underline-offset: 3px; }
+  strong { color: var(--ink); font-weight: 680; }
+  code, .mono { font-family: var(--font-mono); }
+  p code, li code {
+    font-size: 0.87em; background: var(--panel-2); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: 5px; color: var(--accent-d);
+  }
+
+  /* ---------- hero ---------- */
+  .hero { padding-top: 60px; }
+  .readout {
+    display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px;
+  }
+  .stat {
+    flex: 1 1 150px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .stat .n { font-family: var(--font-mono); font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .stat .n.acc { color: var(--accent); }
+  .stat .n.save { color: var(--cheap); }
+  .stat .l { font-size: 0.82rem; color: var(--ink-soft); margin-top: 2px; }
+
+  /* ---------- reusable panels ---------- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 24px; box-shadow: var(--shadow); margin: 22px 0;
+  }
+  .aside {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); border-radius: 8px;
+    padding: 16px 18px; margin: 22px 0; font-size: 0.96rem;
+  }
+  .aside .tag {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 6px;
+  }
+  .aside p:last-child { margin-bottom: 0; }
+
+  /* ---------- code block ---------- */
+  pre {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; overflow-x: auto; margin: 20px 0; box-shadow: var(--shadow);
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.62; color: var(--ink);
+  }
+  pre .c { color: var(--ink-faint); font-style: italic; }   /* comment */
+  pre .k { color: var(--accent); }                          /* keyword-ish */
+  pre .s { color: var(--cheap); }                           /* string */
+  pre .f { color: var(--expensive); }                       /* call / accent */
+
+  /* ---------- cascade diagram ---------- */
+  .cascade { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 8px 0; }
+  @media (min-width: 720px){ .cascade { grid-template-columns: repeat(3, 1fr); } }
+  .tier {
+    position: relative; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px; box-shadow: var(--shadow);
+  }
+  .tier .badge {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; padding: 3px 9px; border-radius: 20px; display: inline-block; margin-bottom: 10px;
+  }
+  .tier.t1 { border-top: 3px solid var(--cheap); }
+  .tier.t2 { border-top: 3px solid var(--mid); }
+  .tier.t3 { border-top: 3px solid var(--expensive); }
+  .tier.t1 .badge { color: var(--cheap); background: color-mix(in srgb, var(--cheap) 14%, transparent); }
+  .tier.t2 .badge { color: var(--mid); background: color-mix(in srgb, var(--mid) 16%, transparent); }
+  .tier.t3 .badge { color: var(--expensive); background: color-mix(in srgb, var(--expensive) 16%, transparent); }
+  .tier h4 { margin: 0 0 4px; font-size: 1rem; }
+  .tier .meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+  .tier p { font-size: 0.9rem; margin: 8px 0 0; color: var(--ink-soft); }
+
+  /* ---------- interactive demo ---------- */
+  .demo { margin: 22px 0; }
+  .dots { display: grid; grid-template-columns: repeat(12, 1fr); gap: 7px; margin: 6px 0 18px; }
+  @media (max-width: 520px){ .dots { grid-template-columns: repeat(8, 1fr); } }
+  .dot {
+    aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent;
+    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+  }
+  @media (prefers-reduced-motion: reduce){ .dot { transition: none; } }
+  .dot.cheap-ok   { background: var(--cheap); }
+  .dot.cheap-bad  { background: color-mix(in srgb, var(--expensive) 55%, var(--panel)); }
+  .dot.escalated  { background: var(--panel); border-color: var(--mid); box-shadow: inset 0 0 0 2px color-mix(in srgb,var(--mid) 40%,transparent); }
+  .slider-row { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; }
+  .slider-row label { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+  input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
+  input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .gauges { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (min-width: 560px){ .gauges { grid-template-columns: repeat(4, 1fr); } }
+  .gauge { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .gauge .gn { font-family: var(--font-mono); font-size: 1.42rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .gauge .gl { font-size: 0.76rem; color: var(--ink-soft); margin-top: 1px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.82rem; color: var(--ink-soft); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- bars (ablation) ---------- */
+  .bars { display: flex; flex-direction: column; gap: 11px; margin: 8px 0 4px; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 52px; align-items: center; gap: 12px; }
+  .bar-row .name { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-soft); }
+  .bar-track { background: var(--panel-2); border-radius: 6px; height: 22px; overflow: hidden; border: 1px solid var(--line); }
+  .bar-fill { height: 100%; border-radius: 5px 0 0 5px; }
+  .bar-row .val { font-family: var(--font-mono); font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 520px){ .bar-row { grid-template-columns: 92px 1fr 46px; } }
+
+  /* ---------- figures ---------- */
+  figure { margin: 22px 0; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow); }
+  figcaption { font-size: 0.84rem; color: var(--ink-soft); margin-top: 8px; text-align: center; }
+
+  /* ---------- code map ---------- */
+  .map { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+  .file {
+    display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: baseline;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 13px 16px;
+  }
+  .file .path { font-family: var(--font-mono); font-size: 13px; color: var(--accent-d); white-space: nowrap; }
+  .file .desc { font-size: 0.92rem; color: var(--ink-soft); }
+  .file .desc b { color: var(--ink); }
+  .step { display:inline-block; font-family: var(--font-mono); font-size: 11px; font-weight:700; color: var(--paper); background: var(--accent); width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 6px; margin-right: 4px; }
+
+  ul.clean { padding-left: 0; list-style: none; margin: 0 0 18px; }
+  ul.clean li { position: relative; padding-left: 24px; margin-bottom: 10px; }
+  ul.clean li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-family: var(--font-mono); }
+
+  .footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 0.86rem; }
+  .footer .mono { color: var(--ink-soft); }
+
+  .pill { font-family: var(--font-mono); font-size: 11px; font-weight:700; letter-spacing:.06em; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; }
+  .pill.done { color: var(--cheap); background: color-mix(in srgb,var(--cheap) 15%, transparent); }
+  .pill.partial { color: var(--expensive); background: color-mix(in srgb,var(--expensive) 15%, transparent); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><b>semopt</b> <span class="dim">/ field guide</span></div>
+  <button class="toggle" id="themeToggle" aria-label="Toggle light or dark theme">◐ theme</button>
+</div>
+
+<!-- ============ HERO ============ -->
+<header class="hero wrap">
+  <p class="eyebrow">Cost-optimal query engine · plain-language tour</p>
+  <h1>Ask an LLM a million questions — without paying a fortune.</h1>
+  <p class="lede">
+    <strong>semopt</strong> runs database-style queries where a language model answers each row,
+    and makes them cheap by sending easy rows to a small model and only the hard ones to a
+    big model — with a <em>mathematical promise</em> about how accurate the result will be.
+  </p>
+
+  <div class="readout" role="group" aria-label="Headline results">
+    <div class="stat"><div class="n save">16%</div><div class="l">of the naive cost, at the 90% accuracy target</div></div>
+    <div class="stat"><div class="n acc">±3%</div><div class="l">how tightly it hits the accuracy you ask for</div></div>
+    <div class="stat"><div class="n">5</div><div class="l">semantic operators: filter · map · extract · join · rank</div></div>
+  </div>
+  <p style="margin-top:22px; font-size:0.92rem; color:var(--ink-faint);">
+    A 10-minute read. No prior knowledge assumed — every idea is unpacked with a plain-language
+    aside, then tied back to the exact file in the codebase.
+  </p>
+</header>
+
+<!-- ============ THE PROBLEM ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">01 · The problem</p>
+    <h2>Why is this even hard?</h2>
+    <p>
+      Normal databases answer questions with fast, exact logic: <code>WHERE price &lt; 10</code>
+      checks a number. But a lot of real data is <strong>unstructured</strong> — product reviews,
+      support tickets, contracts, papers. To ask “does this review complain about shipping?” you
+      need something that actually <em>reads</em> the text. That something is a large language model (LLM).
+    </p>
+    <p>
+      The catch: every LLM call costs money and time. Run the strongest model on 100,000 rows at
+      about a cent each and one query costs <strong>$1,000</strong>. Do that for every question and
+      the system is simply too expensive to use.
+    </p>
+    <div class="aside">
+      <span class="tag">Background · what's an LLM call?</span>
+      <p style="margin:0;">Think of it as renting a very smart reader by the word. You hand it some
+      text and a question; it hands back an answer and a bill. Big models read better but charge
+      much more. The whole game is: <em>use the expensive reader as little as possible.</em></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SEMANTIC OPERATORS ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">02 · The building blocks</p>
+    <h2>Semantic operators: SQL, but the “where” clause is a sentence</h2>
+    <p>
+      semopt gives you a table you can run <em>LLM-powered</em> operations on. They look just like
+      database operations, except the condition is written in plain English and judged by a model.
+      There are five:
+    </p>
+    <ul class="clean">
+      <li><code>sem_filter</code> — keep rows where a yes/no question is true <span style="color:var(--ink-faint)">(“is this a complaint?”)</span></li>
+      <li><code>sem_map</code> — produce a new value per row <span style="color:var(--ink-faint)">(“summarize this in 5 words”)</span></li>
+      <li><code>sem_extract</code> — pull structured fields out of messy text <span style="color:var(--ink-faint)">(clause type, risk level)</span></li>
+      <li><code>sem_join</code> — match rows across two tables by meaning, not exact keys</li>
+      <li><code>sem_rank</code> — order rows by how well they answer a query, keep the top-k</li>
+    </ul>
+    <pre><span class="c"># Load a table, then filter it with an English predicate.</span>
+reviews  = <span class="k">SemanticTable</span>.from_parquet(<span class="s">"reviews.parquet"</span>)
+
+complaints = reviews.<span class="f">sem_filter</span>(
+    <span class="s">"Does this review complain about shipping or packaging?"</span>,
+    target_accuracy=<span class="k">0.90</span>,   <span class="c"># ← you name the accuracy; semopt hits it</span>
+)</pre>
+    <p>
+      That <code>target_accuracy</code> is the whole personality of the project. You don’t fiddle
+      with model choices or thresholds — you state the accuracy you need, and the engine figures out
+      the cheapest way to deliver it. The next two sections are how.
+    </p>
+  </div>
+</section>
+
+<!-- ============ THE CASCADE ============ -->
+<section>
+  <div class="wide">
+    <p class="kicker">03 · The big idea</p>
+    <h2>The cascade: try cheap first, escalate only when unsure</h2>
+    <p class="wrap" style="padding-left:0;padding-right:0;">
+      Most rows are easy. “Great product, five stars!” obviously isn’t a shipping complaint — a tiny
+      model nails it. So semopt runs a <strong>cascade</strong>: a small model tries first, and only
+      when it isn’t confident does the row get <em>escalated</em> to a bigger, pricier model.
+    </p>
+    <div class="cascade">
+      <div class="tier t1">
+        <span class="badge">Tier 1 · cheap</span>
+        <h4>Small local model</h4>
+        <div class="meta">≈ free · runs on your laptop</div>
+        <p>Answers the easy majority. If it’s confident enough, we stop here and pay nothing.</p>
+      </div>
+      <div class="tier t2">
+        <span class="badge">Tier 2 · mid</span>
+        <h4>Bigger local model</h4>
+        <div class="meta">still ≈ free · slower</div>
+        <p>Catches the medium-hard rows the small model wasn’t sure about.</p>
+      </div>
+      <div class="tier t3">
+        <span class="badge">Tier 3 · expensive</span>
+        <h4>Frontier API model</h4>
+        <div class="meta">$$$ · the last resort</div>
+        <p>Only the genuinely hard rows reach here — a small slice of the total.</p>
+      </div>
+    </div>
+    <div class="wrap" style="padding-left:0;padding-right:0;">
+      <div class="aside">
+        <span class="tag">Background · “confidence”</span>
+        <p style="margin:0;">When a model answers yes/no, it also reveals <em>how sure</em> it is
+        (from the probabilities behind its answer). High sureness on an easy row; a coin-flip on a
+        hard one. The cascade escalates whenever sureness drops below a threshold called <strong>τ</strong> (“tau”).
+        The obvious question — <em>where do you set τ?</em> — is exactly what the guarantee answers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INTERACTIVE ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">04 · See it move</p>
+    <h2>Play with the escalation dial</h2>
+    <p>
+      Each dot is one query. <span style="color:var(--cheap);font-weight:600">Green</span> = the cheap
+      model got it right; <span style="color:var(--expensive);font-weight:600">orange</span> = the cheap
+      model got it wrong. Drag the dial to set the confidence threshold <strong>τ</strong>. Rows the cheap
+      model isn’t sure about get <span style="color:var(--mid);font-weight:600">escalated</span> (hollow, ringed)
+      to the expensive model, which almost always fixes them.
+    </p>
+
+    <div class="demo panel">
+      <div class="dots" id="dots" aria-hidden="true"></div>
+      <div class="slider-row">
+        <label for="tau">low τ&nbsp;·&nbsp;cheap</label>
+        <input type="range" id="tau" min="50" max="99" value="50" aria-label="confidence threshold tau">
+        <label for="tau" style="text-align:right">accurate&nbsp;·&nbsp;high τ</label>
+      </div>
+      <div class="gauges">
+        <div class="gauge"><div class="gn" id="g-esc" style="color:var(--mid)">0%</div><div class="gl">rows escalated to $$$</div></div>
+        <div class="gauge"><div class="gn" id="g-acc" style="color:var(--accent)">—</div><div class="gl">final accuracy</div></div>
+        <div class="gauge"><div class="gn" id="g-cost" style="color:var(--expensive)">—</div><div class="gl">cost vs. all-expensive</div></div>
+        <div class="gauge"><div class="gn" id="g-tau">0.50</div><div class="gl">threshold τ</div></div>
+      </div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--cheap)"></i> cheap &amp; correct</span>
+        <span><i class="swatch" style="background:color-mix(in srgb,var(--expensive) 55%,var(--panel))"></i> cheap &amp; wrong</span>
+        <span><i class="swatch" style="background:var(--panel);box-shadow:inset 0 0 0 2px var(--mid)"></i> escalated → fixed</span>
+      </div>
+    </div>
+    <p>
+      Notice the tension: drag right and accuracy climbs but so does cost; drag left and it’s nearly
+      free but sloppy. <strong>Every setting of τ is a different trade.</strong> The art is picking the
+      τ that delivers exactly the accuracy you promised — no more (wasteful), no less (broken).
+    </p>
+  </div>
+</section>
+
+<!-- ============ THE GUARANTEE ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">05 · The heart of it</p>
+    <h2>The guarantee: how τ gets chosen, with a promise attached</h2>
+    <p>
+      A normal cascade (like the well-known “FrugalGPT”) picks τ by hand-tuning until it looks good.
+      semopt’s contribution is to pick τ with <strong>conformal calibration</strong> — a statistics
+      technique that turns “I hand-tuned it” into “I can prove the error rate stays at or below what
+      you asked for.”
+    </p>
+    <div class="aside">
+      <span class="tag">Background · conformal calibration in one breath</span>
+      <p>You set aside a small batch of examples where you know the right answers (the
+      <em>calibration set</em>). You watch how confident the cheap model is exactly when it’s
+      <em>wrong</em>. That tells you how high to set τ so that the wrong-but-accepted rows stay under
+      your error budget <strong>α</strong> (alpha). The result isn’t a hunch — it’s a threshold with a
+      finite-sample coverage guarantee.</p>
+      <p style="margin-bottom:0;">Written as a promise: <span class="mono" style="color:var(--ink)">P(model is wrong AND we accepted it) ≤ α</span>.
+      If you ask for 90% accuracy, α is 0.10.</p>
+    </div>
+    <p>
+      Here’s the payoff, measured on the project’s built-in test workload. The line you want to see is
+      the blue one <em>hugging the dotted diagonal</em>: the accuracy you <em>asked for</em> (x-axis)
+      matches the accuracy you actually <em>got</em> (y-axis), every time, inside a ±3% band.
+    </p>
+    <figure>
+      <img src="report/figures/coverage_validity.png" alt="Coverage validity chart: empirical coverage tracks the nominal 1 minus alpha diagonal within a 3 percent band for alpha 0.05, 0.10, 0.20.">
+      <figcaption>Promise kept: at α = 0.05, 0.10, 0.20 the delivered accuracy lands within ±3% of the target.</figcaption>
+    </figure>
+    <p>
+      This machinery was <em>reused</em> from the author’s earlier drift-detection project — the same
+      weighted-conformal math, pointed at a new problem. That reuse is part of the research story.
+    </p>
+  </div>
+</section>
+
+<!-- ============ THE OPTIMIZER ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">06 · The other half</p>
+    <h2>The optimizer: rewrite the query to spend less</h2>
+    <p>
+      The cascade makes each call cheaper. The <strong>optimizer</strong> makes <em>fewer</em> calls,
+      by rewriting your query before it runs — the same way a database planner reorders work. You write
+      the query naturally; it quietly improves it. Three moves do most of the work:
+    </p>
+    <ul class="clean">
+      <li><strong>Reorder</strong> — run the cheapest, most selective filter first so it throws away rows before pricier steps see them.</li>
+      <li><strong>Pushdown</strong> — slide filters ahead of expensive steps (like a per-row summarize) they don’t depend on, shrinking that step’s workload.</li>
+      <li><strong>Memoize</strong> — spot duplicate rows and answer each unique one only once.</li>
+    </ul>
+    <p>How much does each move matter? Turn one off and watch the savings drop:</p>
+    <div class="panel">
+      <div class="bars" id="ablationBars" aria-hidden="true"></div>
+      <p style="font-size:0.82rem;color:var(--ink-faint);margin:12px 0 0;">
+        Bars show cost savings versus the naive plan (100% = full optimizer). Each “− pass” disables one move,
+        so the gap back down to it is that move’s contribution.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESULTS ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">07 · Does it actually win?</p>
+    <h2>Cheaper at the accuracy you asked for</h2>
+    <p>
+      The clinching picture is the <strong>cost–accuracy frontier</strong>. Every method is a point:
+      further left is cheaper, higher up is more accurate. semopt’s blue line sits <em>up and to the
+      left</em> of the alternatives — it delivers the target accuracy for less money.
+    </p>
+    <figure>
+      <img src="report/figures/pareto.png" alt="Cost-accuracy Pareto chart: the conformal cascade frontier sits to the left of (cheaper than) the naive-strongest, fixed-threshold, and hand-tuned baselines at matched accuracy.">
+      <figcaption>At the 90% target, semopt hits accuracy 0.907 at ~16% of the all-expensive cost. The hand-tuned baseline overshoots to 0.95 and pays far more for accuracy nobody asked for.</figcaption>
+    </figure>
+    <p>
+      The subtle win: the hand-tuned baseline (green diamond) is <em>too cautious</em> — it escalates
+      more than needed and lands at 95% when you only wanted 90%, wasting money. semopt spends exactly
+      enough to keep its promise, and not a cent more.
+    </p>
+  </div>
+</section>
+
+<!-- ============ CODE MAP ============ -->
+<section>
+  <div class="wide">
+    <p class="kicker">08 · Dive in</p>
+    <h2>The codebase, in the order worth reading it</h2>
+    <p class="wrap" style="padding:0;">
+      Everything lives under <code>src/semopt/</code>. Follow the numbered path and each file will make
+      sense in terms of the one before it. Start at the table, end at the guarantee.
+    </p>
+    <div class="map">
+      <div class="file"><span class="path"><span class="step">1</span>table.py</span><span class="desc"><b>The front door.</b> The <code>SemanticTable</code> you load data into and call <code>.sem_filter()</code> etc. on. Everything else hangs off this.</span></div>
+      <div class="file"><span class="path"><span class="step">2</span>operators/filter.py</span><span class="desc"><b>One operator, start to finish.</b> Read this to see how a plain-English question becomes a per-row prompt and a kept/dropped decision. The other four operators mirror it.</span></div>
+      <div class="file"><span class="path"><span class="step">3</span>models/base.py</span><span class="desc"><b>The model interface.</b> One tiny contract — <code>.predict(prompt)</code> — that local (MLX), API (OpenAI/Anthropic), and mock backends all satisfy.</span></div>
+      <div class="file"><span class="path"><span class="step">4</span>cascade/conformal.py</span><span class="desc"><b>The star.</b> Turns a calibration set into the threshold τ with the coverage promise. If you read one file, read this.</span></div>
+      <div class="file"><span class="path"><span class="step">5</span>cascade/cascade.py</span><span class="desc"><b>The dispatcher.</b> Sends each row down the tiers, stops when confident, records what happened. Uses τ from step 4.</span></div>
+      <div class="file"><span class="path"><span class="step">6</span>planner/optimizer.py</span><span class="desc"><b>The rewriter.</b> The reorder / pushdown / memoize passes, each toggleable — that’s how the ablation chart is produced.</span></div>
+      <div class="file"><span class="path"><span class="step">7</span>experiments/run_coverage.py</span><span class="desc"><b>Proof, reproducible.</b> Ties it together and prints the coverage table. Run it and watch the promise hold.</span></div>
+    </div>
+    <div class="wrap" style="padding:0;">
+      <div class="aside">
+        <span class="tag">Supporting cast</span>
+        <p style="margin:0;"><code>cache/memo.py</code> remembers answers so you never pay twice ·
+        <code>cost/cost_model.py</code> is the dollars-per-call source of truth ·
+        <code>eval/</code> holds the metrics and the competing baselines ·
+        <code>benchmarks/</code> defines the real datasets (stubbed — they need downloads + API keys).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RUN IT ============ -->
+<section>
+  <div class="wrap">
+    <p class="kicker">09 · Try it yourself</p>
+    <h2>Four commands</h2>
+    <pre><span class="c"># install (uses uv; creates the virtual env)</span>
+uv pip install -e <span class="s">".[dev,plots]"</span>
+
+<span class="c"># run the test suite — 101 tests, all green</span>
+uv run pytest
+
+<span class="c"># reproduce every number and figure in this guide</span>
+make full
+
+<span class="c"># see the optimizer rewrite a query, with cost estimates</span>
+uv run python -m semopt.demo</pre>
+    <div class="aside">
+      <span class="tag">Where the project stands</span>
+      <p style="margin:0;">
+        <span class="pill done">done</span> the engine, the five operators, the conformal cascade, the
+        optimizer, the baselines, and the figures — all tested and reproducible on a built-in
+        <em>synthetic</em> workload.<br><br>
+        <span class="pill partial">next</span> wiring the three <em>real</em> datasets (Amazon reviews,
+        arXiv, contracts), which need downloads and a paid API budget, then writing the workshop paper.
+        The numbers here are from the synthetic stand-in and are labeled as such throughout the repo.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer wrap">
+  <p class="mono">semopt · cost-optimal query engine for LLM semantic operators</p>
+  <p>A plain-language companion to <code>SRS.md</code> and <code>NOTES.md</code>. The charts are the
+  real files under <code>report/figures/</code>; if they don’t show, run <code>make full</code> first
+  to generate them. Everything here maps to code you can open.</p>
+</footer>
+
+<script>
+(function () {
+  // ---------- theme toggle ----------
+  var root = document.documentElement;
+  var btn = document.getElementById('themeToggle');
+  btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme');
+    if (!cur) {
+      cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+
+  // ---------- interactive cascade demo ----------
+  var N = 48;
+  // Deterministic pseudo-data: each query has a confidence and a cheap-correctness.
+  // Higher confidence -> more likely the cheap model is right (as in the real workload).
+  var rng = (function (s) { return function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; })(7);
+  var rows = [];
+  for (var i = 0; i < N; i++) {
+    var conf = 0.5 + 0.49 * Math.pow(rng(), 0.8);      // spread across [0.5, 0.99]
+    var pCorrect = 0.5 + 0.5 * (conf - 0.5) / 0.49;    // confident -> usually correct
+    var cheapOK = rng() < pCorrect;
+    rows.push({ conf: conf, cheapOK: cheapOK });
+  }
+  var EXP_ACC = 0.97; // expensive model is nearly always right
+
+  var dotsEl = document.getElementById('dots');
+  rows.forEach(function () {
+    var d = document.createElement('div');
+    d.className = 'dot';
+    dotsEl.appendChild(d);
+  });
+  var dotEls = Array.prototype.slice.call(dotsEl.children);
+
+  var tau = document.getElementById('tau');
+  var gEsc = document.getElementById('g-esc'),
+      gAcc = document.getElementById('g-acc'),
+      gCost = document.getElementById('g-cost'),
+      gTau = document.getElementById('g-tau');
+
+  function render() {
+    var t = tau.value / 100;
+    var escalated = 0, correct = 0;
+    rows.forEach(function (r, i) {
+      var el = dotEls[i];
+      if (r.conf < t) {                 // escalate: expensive model answers
+        escalated++;
+        el.className = 'dot escalated';
+        correct += EXP_ACC;             // expected correctness at the expensive tier
+      } else {                          // accept the cheap answer
+        el.className = 'dot ' + (r.cheapOK ? 'cheap-ok' : 'cheap-bad');
+        correct += r.cheapOK ? 1 : 0;
+      }
+    });
+    var acc = correct / N;
+    var escFrac = escalated / N;        // cheap ~ free, so cost tracks the escalated share
+    gEsc.textContent = Math.round(escFrac * 100) + '%';
+    gAcc.textContent = Math.round(acc * 100) + '%';
+    gCost.textContent = Math.round(escFrac * 100) + '%';
+    gTau.textContent = t.toFixed(2);
+  }
+  tau.addEventListener('input', render);
+  render();
+
+  // ---------- ablation bars (real numbers from make ablation) ----------
+  var ablation = [
+    { name: 'full optimizer', val: 99.0, color: 'var(--accent)' },
+    { name: '− reorder',      val: 95.7, color: 'var(--expensive)' },
+    { name: '− pushdown',     val: 90.7, color: 'var(--expensive)' },
+    { name: '− memoize',      val: 91.9, color: 'var(--expensive)' },
+    { name: 'naive plan',     val: 0.0,  color: 'var(--ink-faint)' }
+  ];
+  var barsEl = document.getElementById('ablationBars');
+  ablation.forEach(function (b) {
+    var row = document.createElement('div'); row.className = 'bar-row';
+    var name = document.createElement('div'); name.className = 'name'; name.textContent = b.name;
+    var track = document.createElement('div'); track.className = 'bar-track';
+    var fill = document.createElement('div'); fill.className = 'bar-fill';
+    fill.style.width = Math.max(b.val, 1.5) + '%';
+    fill.style.background = b.color;
+    track.appendChild(fill);
+    var val = document.createElement('div'); val.className = 'val'; val.textContent = b.val.toFixed(1) + '%';
+    row.appendChild(name); row.appendChild(track); row.appendChild(val);
+    barsEl.appendChild(row);
+  });
+})();
+</script>
+</body>
+</html>

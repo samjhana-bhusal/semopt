@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Environments
+.venv/
+venv/
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+# Secrets / local env (NEVER commit API keys)
+.env
+.env.*
+*.pem
+
+# LaTeX build artifacts (report/main.tex is tracked; its build products are not)
+report/*.pdf
+report/*.aux
+report/*.log
+report/*.out
+report/*.synctex.gz
+report/*.fls
+report/*.fdb_latexmk
+report/*.bbl
+report/*.blg
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Generated outputs (reproducible; not committed)
+outputs/
+!outputs/README.md
+report/figures/*.png
+report/figures/*.pdf
+
+# LLM cache (may be large; regenerable)
+*.sqlite
+
+# OS
+.DS_Store
+
+# Model weights / benchmark data (downloaded, not committed)
+benchmarks/*/splits/
+benchmarks/*/raw/
+models_cache/
+
+# Local Claude Code settings (keep shared config, drop machine-local)
+.claude/settings.local.json

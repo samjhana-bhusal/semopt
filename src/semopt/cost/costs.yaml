@@ -1,0 +1,70 @@
+# Per-model cost table (FR-4.1).
+#
+#   usd_per_1m_input  : USD per 1,000,000 input tokens
+#   usd_per_1m_output : USD per 1,000,000 output tokens
+#   ms_per_call       : measured wall-clock per call on the target M5 (placeholder
+#                       until FR-4.3 refresh; local models measured, API models from
+#                       observed latency)
+#
+# Local MLX models are ~free in $ terms; we still record a nominal energy/opportunity
+# cost of 0 and rely on ms_per_call + tier ordering to reflect their true cost.
+# API prices are list prices as of 2025 and MUST be refreshed via FR-4.3 before any
+# headline number ships.
+
+models:
+  # ---- Local MLX tiers (Apple silicon, ~free) ----
+  mlx-llama-3.2-1b:
+    usd_per_1m_input: 0.0
+    usd_per_1m_output: 0.0
+    ms_per_call: 120.0
+    tier: cheap
+
+  mlx-llama-3.2-3b:
+    usd_per_1m_input: 0.0
+    usd_per_1m_output: 0.0
+    ms_per_call: 260.0
+    tier: mid
+
+  mlx-llama-3.1-8b:
+    usd_per_1m_input: 0.0
+    usd_per_1m_output: 0.0
+    ms_per_call: 700.0
+    tier: mid
+
+  # ---- API tiers ----
+  gpt-4o-mini:
+    usd_per_1m_input: 0.15
+    usd_per_1m_output: 0.60
+    ms_per_call: 900.0
+    tier: cheap
+
+  gpt-4o:
+    usd_per_1m_input: 2.50
+    usd_per_1m_output: 10.00
+    ms_per_call: 1400.0
+    tier: expensive
+
+  claude-haiku:
+    usd_per_1m_input: 0.80
+    usd_per_1m_output: 4.00
+    ms_per_call: 1000.0
+    tier: mid
+
+  claude-sonnet:
+    usd_per_1m_input: 3.00
+    usd_per_1m_output: 15.00
+    ms_per_call: 1600.0
+    tier: expensive
+
+  # ---- Test/offline backends (zero cost, instant) ----
+  mock-cheap:
+    usd_per_1m_input: 0.0
+    usd_per_1m_output: 0.0
+    ms_per_call: 0.0
+    tier: cheap
+
+  mock-expensive:
+    usd_per_1m_input: 1.0
+    usd_per_1m_output: 3.0
+    ms_per_call: 0.0
+    tier: expensive

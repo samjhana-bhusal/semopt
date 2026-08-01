@@ -1,0 +1,184 @@
+% semopt — workshop paper DRAFT.
+% Compile: pdflatex main.tex   (plain article class; no external .cls needed)
+%
+% STATUS: this is an agent-drafted skeleton for the applicant to write into and polish
+% (per SRS §10 P4: "Applicant writes; agent may draft sections"). Every number below is
+% from the built-in SYNTHETIC workload and is labelled as such. Real-workload results
+% (W1-W3: Amazon Reviews, arXiv, CUAD) are NOT YET RUN -- they need dataset downloads and
+% a real model backend (API budget / local MLX weights), unavailable at draft time.
+% Do not submit until the \synthetic{} claims are replaced with real-data numbers.
+
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% Marks a claim that currently rests on the synthetic workload only.
+\newcommand{\synthetic}[1]{\textcolor{orange}{#1}\,\textsuperscript{(synthetic)}}
+
+\title{\textbf{semopt}: Cost-Optimal Query Execution for LLM Semantic Operators\\
+\large with Conformal-Guaranteed Model Cascades}
+\author{Samjhana Bhusal\\ \small (DRAFT --- numbers from synthetic workload; real workloads pending)}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Analytics over unstructured data increasingly relies on \emph{semantic operators}---
+SQL-style \texttt{filter}, \texttt{map}, \texttt{extract}, \texttt{join}, and \texttt{rank}
+whose predicates are evaluated by a large language model (LLM). The dominant cost is the
+LLM calls themselves: running the strongest model on every row is often too expensive to
+deploy. We present \textbf{semopt}, a query engine that executes semantic operators
+through a cheap$\rightarrow$expensive model \emph{cascade} and escalates a row to a
+stronger model only when the cheaper model's calibrated confidence is too low. Our central
+contribution is that the escalation threshold is \emph{not} hand-tuned: it is derived by
+\emph{weighted conformal calibration}, giving a distribution-free, finite-sample guarantee
+that the end-to-end error rate stays at or below a user-specified target $\alpha$. On a
+controlled synthetic workload, semopt holds empirical coverage within
+\synthetic{$\pm 3\%$} of the nominal $1-\alpha$ across $\alpha \in \{0.05, 0.10, 0.20\}$
+while costing \synthetic{$\approx 16\%$} of a naive strongest-model plan, and a cost-based
+optimizer (reordering, predicate pushdown, semantic memoization) removes a further
+\synthetic{$\approx 99\%$} of estimated cost versus an unoptimized plan. We describe the
+system and evaluation protocol; validation on real workloads (Amazon Reviews, arXiv, CUAD)
+is in progress.
+\end{abstract}
+
+\section{Introduction}
+Systems such as LOTUS~\cite{lotus}, Palimpzest~\cite{palimpzest}, and
+DocETL~\cite{docetl} established semantic operators as a way to query unstructured data
+with LLMs. The open problem they share is cost: an LLM call per row, at the strongest
+model, does not scale. Model \emph{cascades}~\cite{frugalgpt} reduce this by trying a cheap
+model first and escalating on low confidence, but they choose the escalation threshold
+heuristically---so the accuracy that results is whatever the heuristic happens to produce.
+
+We ask instead: \emph{can the user state the accuracy they need, and have the system
+guarantee it at minimum cost?} semopt answers yes for the cascade's escalation decision, by
+reusing weighted conformal prediction~\cite{tibshirani} to turn a labelled calibration set
+into a threshold with a coverage guarantee. Our contributions:
+\begin{enumerate}
+  \item \textbf{Conformal-guaranteed cascade escalation.} A principled alternative to
+  threshold-heuristic cascades, with a finite-sample coverage guarantee that holds under
+  bounded covariate shift (\S\ref{sec:conformal}).
+  \item \textbf{A semantic-operator query optimizer} performing cost/selectivity
+  reordering, LLM-predicate pushdown, and semantic memoization (\S\ref{sec:optimizer}).
+  \item \textbf{An evaluation protocol and Pareto analysis} against five baselines, with a
+  reproducible pipeline (\S\ref{sec:eval}).
+\end{enumerate}
+We do \emph{not} claim to solve the general semantic database; we contribute one optimizer
+with one guarantee.
+
+\section{System overview}
+A \texttt{SemanticTable} exposes the five operators; each accepts a natural-language
+predicate and a \texttt{target\_accuracy}. A query is built lazily, optimized, then
+executed by a streaming operator tree. Every LLM-invoking operator may run through a
+confidence cascade of model tiers (e.g. a local 1B model, a local 8B model, a frontier API
+model). All calls are memoized in a persistent cache keyed by $(\textrm{model\_id},
+\textrm{prompt hash})$, giving deterministic replay and cost containment.
+
+\section{Conformal cascade}\label{sec:conformal}
+At a tier we accept the cheap answer when its confidence $c \ge \tau$ and otherwise
+escalate. Let a \emph{leaked error} be an accepted-but-wrong row. We choose the smallest
+$\tau$ (maximising cheap acceptance) such that, on exchangeable test data,
+\[
+  P(\text{model wrong} \wedge c \ge \tau) \;\le\; \alpha .
+\]
+$\tau$ is the appropriate weighted quantile of the \emph{incorrect} calibration rows'
+confidences, with an $(n{+}1)$ finite-sample correction; under covariate shift the
+calibration points carry density-ratio weights $w(x)=p_{\text{test}}(x)/p_{\text{train}}(x)$,
+following Tibshirani et al.~\cite{tibshirani}. For a two-tier cascade the end-to-end error
+decomposes as
+$\text{leaked}_0 + \Pr(\text{escalate}) \cdot \text{err}_{\text{strong}}$;
+we budget the cheap tier at $\alpha_0 = \alpha - \Pr(\text{escalate})\cdot
+\text{err}_{\text{strong}}$ and solve the resulting fixed point, so the total is controlled
+at $\alpha$. Confidence itself is the max class probability from token logprobs, or a
+self-consistency estimate when logprobs are unavailable.
+
+\section{Query optimizer}\label{sec:optimizer}
+The optimizer rewrites the plan with three passes: (i) \emph{reordering} adjacent filters
+by $\text{cost}/(1-\text{selectivity})$ so cheap, selective predicates run first;
+(ii) \emph{pushdown} of filters ahead of projections/maps they do not depend on; and
+(iii) \emph{semantic memoization}, marking operators whose inputs contain duplicates.
+Selectivity is estimated from a cheap-tier sample of the calibration set.
+
+\section{Evaluation}\label{sec:eval}
+\textbf{Protocol.} We report cost (\$ per 1k rows), task accuracy (F1 for filter),
+empirical coverage with a 95\% bootstrap CI, and tier distribution. Baselines: naive
+strongest (B0), naive cheapest (B1), hand-tuned FrugalGPT-style cascade (B2), fixed
+threshold $\tau{=}0.8$ (B3), and our method; all share one cost model and cache.
+\emph{The numbers below are from a controlled synthetic workload with a known
+difficulty structure; real-workload results are pending.}
+
+\begin{table}[t]\centering\small
+\caption{Coverage validity on the synthetic workload. Empirical accuracy tracks the target
+within $\pm3\%$ (Fig.~\ref{fig:coverage}).}
+\label{tab:coverage}
+\begin{tabular}{cccc}
+\toprule
+$\alpha$ & target $1-\alpha$ & empirical & cost vs.\ naive\\
+\midrule
+0.05 & 0.95 & \synthetic{0.949} & 0.26$\times$\\
+0.10 & 0.90 & \synthetic{0.906} & 0.16$\times$\\
+0.20 & 0.80 & \synthetic{0.819} & 0.06$\times$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Cost--accuracy frontier.} Figure~\ref{fig:pareto} shows our cascade on the
+cost--accuracy Pareto frontier: at the $0.90$ target it reaches accuracy
+\synthetic{$0.907$} at \synthetic{$16\%$} of naive-strongest cost, whereas the hand-tuned
+baseline \emph{overshoots} to $0.95$---paying for accuracy the user did not request.
+
+\textbf{Optimizer ablation.} Disabling each pass in turn attributes the savings
+(Fig.~\ref{fig:ablation}): from a full-optimizer saving of \synthetic{$99.0\%$} vs.\ the
+naive plan, removing reordering, pushdown, and memoization drop it to
+\synthetic{$95.7\%$}, \synthetic{$90.7\%$}, and \synthetic{$91.9\%$} respectively.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/pareto.png}
+\caption{Cost--accuracy Pareto (synthetic). Our frontier lies left of / above the
+baselines at matched accuracy.}
+\label{fig:pareto}
+\end{figure}
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.86\linewidth]{figures/coverage_validity.png}
+\caption{Coverage validity (synthetic): empirical vs.\ nominal $1-\alpha$, within a
+$\pm3\%$ band.}
+\label{fig:coverage}
+\end{figure}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/optimizer_ablation.png}
+\caption{Optimizer ablation (synthetic): cost savings vs.\ naive with each pass disabled.}
+\label{fig:ablation}
+\end{figure}
+
+\section{Limitations and status}
+Results here are on a synthetic workload with a designed difficulty structure; they
+validate the mechanism and protocol but are not evidence on real text. Real-workload
+evaluation (Amazon Reviews complaint classification, arXiv triage, CUAD clause extraction)
+is the immediate next step and requires a real model backend. The coverage guarantee is
+marginal (not conditional) and assumes exchangeability or bounded, modelled covariate
+shift; a workload that violates this is a finding, not a bug, and points toward the
+non-exchangeable framework of Barber et al.~\cite{barber}.
+
+\section{Conclusion}
+semopt lets a user name the accuracy they need and pays only for it, by deriving cascade
+escalation thresholds through weighted conformal calibration and rewriting the query to
+cut LLM calls. On synthetic data the guarantee holds within $\pm3\%$ at a fraction of naive
+cost; real-workload validation is in progress.
+
+\begin{thebibliography}{9}\small
+\bibitem{lotus} Patel et al. LOTUS: Enabling Semantic Queries with LLMs over Tables. 2024.
+\bibitem{palimpzest} Liu et al. A Declarative System for Optimizing AI Workloads (Palimpzest). 2024.
+\bibitem{docetl} Shankar et al. DocETL: Agentic Query Rewriting for Document Processing. 2024.
+\bibitem{frugalgpt} Chen, Zaharia, Zou. FrugalGPT. 2023.
+\bibitem{tibshirani} Tibshirani, Foygel Barber, Cand\`es, Ramdas. Conformal Prediction Under Covariate Shift. NeurIPS 2019.
+\bibitem{barber} Barber, Cand\`es, Ramdas, Tibshirani. Conformal Prediction Beyond Exchangeability. Ann.\ Statist.\ 2023.
+\end{thebibliography}
+
+\end{document}
